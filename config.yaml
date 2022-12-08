@@ -1,0 +1,34 @@
+root_path: YOUR_IMAGE_ROOT_PATH
+
+predictor:
+  model_path: YOUR_MODEL_PATH
+  batch_size: 32
+  nproc: -1
+
+tagger:
+  add_tags: []
+  prepend_tags: []
+  append_tags: []
+  include_categories: [General]
+  default_threshold: 0.6
+  escape_specials: true
+  hide_tags: []
+  order: alphabetical # alphabetical, probability, probability-reweighted
+  overwrite_mode: replace
+  remove_underscores: true
+  separator: ','
+  token_limit: 65
+
+  custom_threshold_tags:
+  - blush
+  - facial_mark
+  - whisker_markings
+  - miqo'te
+  custom_thresholds:
+  - 0.4
+  - 0.1
+  - 0.1
+  - 0.1
+
+  categories_path: YOUR_CATEGORIES_PATH
+  tags_path: YOUR_TAGS_PATH
