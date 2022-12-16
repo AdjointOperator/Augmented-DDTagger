@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 from prediction import get_predictions
 from tagger import TagHandler, TagConfig
+from pathlib import Path
 import yaml
 
 
@@ -9,6 +10,7 @@ def add_args():
     parser.add_argument('--config', type=str, default='config.yaml')
     parser.add_argument('--root-path', '-d', type=str, default=None, help='Root path of images to be tagged')
     parser.add_argument('--model', '-m', type=str, default=None, help='Model to use for predictions')
+    parser.add_argument('--backend', '-b', type=str, default=None, help='Backend to use for predictions. Choose from "DeepDanbooru" and "ConvNext"')
     parser.add_argument('--categories-path', '-mc', type=str, default=None, help='Model config to use for predictions')
     parser.add_argument('--default-threshold', '-t', type=float, default=None, help='Default threshold for tags')
     parser.add_argument('--custom-threshold-tags', '-ctag', type=str, nargs='+', default=None, help='Tags to apply custom thresholds to. Must be in the same order as custom-thresholds')
@@ -44,6 +46,8 @@ def create_config(args):
 
     predictor_conf['root_path'] = args.root_path if args.root_path is not None else config['root_path']
     tagger_conf['root_path'] = args.root_path if args.root_path is not None else config['root_path']
+    predictor_conf['backend'] = args.backend if args.backend is not None else config['backend']
+    tagger_conf['backend'] = args.backend if args.backend is not None else config['backend']
 
     tagger_conf['default_threshold'] = args.default_threshold if args.default_threshold is not None else tagger_conf['default_threshold']
     tagger_conf['custom_threshold_tags'] = args.custom_threshold_tags if args.custom_threshold_tags is not None else tagger_conf['custom_threshold_tags']
@@ -58,6 +62,19 @@ def create_config(args):
     tagger_conf['overwrite_mode'] = args.overwrite_mode if args.overwrite_mode is not None else tagger_conf['overwrite_mode']
     tagger_conf['order'] = args.order if args.order is not None else tagger_conf['order']
     tagger_conf['categories_path'] = args.categories_path if args.categories_path is not None else tagger_conf['categories_path']
+
+    if not tagger_conf['tags_path']:
+        print(f'Using default categories path for {tagger_conf["backend"]}.')
+        if tagger_conf['backend'] == 'DeepDanbooru':
+            parent = Path(predictor_conf['model_path']).parent
+            tagger_conf['tags_path'] = str(parent / 'tags.txt')
+        else:
+            tagger_conf['tags_path'] = str(Path(predictor_conf['model_path']) / 'selected_tags.csv')
+    
+    if not tagger_conf['categories_path'] and tagger_conf['backend'] == 'DeepDanbooru':
+        print(f'Using default categories path for {tagger_conf["backend"]}.')
+        parent = Path(predictor_conf['model_path']).parent
+        tagger_conf['categories_path'] = str(parent / 'categories.json')
 
     return tagger_conf, predictor_conf
 

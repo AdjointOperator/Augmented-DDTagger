@@ -37,9 +37,7 @@ class TagConfig:
         token_limit (int): Maximum number of tokens outputted by the tagger, does `NOT` include prepend_tags, append_tags, or add_tags
     """
     root_path: str
-    """Path to the root directory of the dataset"""
-    tags_path: str
-    categories_path: str
+    backend: str
     custom_threshold_tags: List[str]
     custom_thresholds: List[float]
     overwrite_mode: str = 'ignore'
@@ -51,6 +49,8 @@ class TagConfig:
     add_fname_tags: bool = False
     hide_tags: Tuple[str] = tuple()
     order: str = 'alphabetical'
+    categories_path: str = ''
+    tags_path: str = ''
     prepend_tags: List[str] = field(default_factory=list)
     append_tags: List[str] = field(default_factory=list)
     add_tags: List[str] = field(default_factory=list)
@@ -81,7 +81,12 @@ class TagConfig:
 
     def load_tags(self):
         # load tags and do preprocessing
-        self.tags_raw = np.loadtxt(self.tags_path, dtype=str)
+        if self.backend == 'DeepDanbooru':
+            self.tags_raw = np.loadtxt(self.tags_path, dtype=str)
+        else:
+            tags_raw = np.loadtxt(self.tags_path, dtype=str, delimiter=',')[1:]
+            self.tags_raw = tags_raw[:, 1]
+            self.wd_convnext_raw_tags = tags_raw
 
         tags = self.tags_raw
         if self.remove_underscores:
@@ -92,7 +97,7 @@ class TagConfig:
             tags = [re_special.sub(r'\\\1', tag) for tag in tags]
         self.tags = np.array(tags)
 
-    def generate_mask(self):
+    def generate_mask_deepdanbooru(self):
         with open(self.categories_path) as f:
             cate_list = json.load(f)
         cate_list = sorted(cate_list, key=lambda k: k['start_index'])
@@ -115,6 +120,19 @@ class TagConfig:
                 idx = np.where(self.tags_raw == tag)[0]
                 assert len(idx) > 0, f'No tag {tag} found for hide tags'
                 self.mask[idx] = False
+
+    def generate_mask_ConvNext(self):
+        categories = {'General': 0, 'System': 9}
+        mask = np.zeros((len(self.tags),), dtype=bool)
+        for name in self.include_categories:
+            mask[self.wd_convnext_raw_tags[:, 2].astype(np.int32) == categories[name]] = True
+        self.mask = mask
+
+    def generate_mask(self):
+        if self.backend == 'DeepDanbooru':
+            self.generate_mask_deepdanbooru()
+        else:
+            self.generate_mask_ConvNext()
 
     def generate_thresholds(self):
         # generate thresholds
@@ -143,6 +161,7 @@ class TagHandler:
             preds (np.ndarray): Array of predictions
         """
         self.config = tag_config
+        self.backend = tag_config.backend
         self.tags = tag_config.tags
         self.thresholds = tag_config.thresholds
         self.paths = [tag_config.root_path / Path(path) for path in paths]

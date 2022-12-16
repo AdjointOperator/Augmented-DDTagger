@@ -1,4 +1,5 @@
 root_path: YOUR_IMAGE_ROOT_PATH
+backend: ConvNext
 
 predictor:
   model_path: YOUR_MODEL_PATH
@@ -11,7 +12,7 @@ tagger:
   append_tags: []
   include_categories: [General]
   default_threshold: 0.6
-  escape_specials: true
+  escape_specials: false
   hide_tags: []
   order: alphabetical # alphabetical, probability, probability-reweighted
   overwrite_mode: replace
@@ -30,5 +31,5 @@ tagger:
   - 0.1
   - 0.1
 
-  categories_path: YOUR_CATEGORIES_PATH
-  tags_path: YOUR_TAGS_PATH
+  categories_path: 
+  tags_path:
