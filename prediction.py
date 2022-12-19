@@ -108,9 +108,9 @@ def load_and_process_image(image:Path|Image.Image|np.ndarray, target_width:int, 
     np_image = cv2.resize(np_image, (nx, ny), interpolation=cv2.INTER_AREA)
     dx, dy = (X - nx) // 2, (Y - ny) // 2
     if backend == 'DeepDanbooru':
-        image = cv2.copyMakeBorder(np_image, dy, Y - ny - dy, dx, X - nx - dx, cv2.BORDER_REPLICATE)
+        np_image = cv2.copyMakeBorder(np_image, dy, Y - ny - dy, dx, X - nx - dx, cv2.BORDER_REPLICATE)
     else:
-        image = cv2.copyMakeBorder(np_image, dy, Y - ny - dy, dx, X - nx - dx, cv2.BORDER_CONSTANT, value=(255, 255, 255))
+        np_image = cv2.copyMakeBorder(np_image, dy, Y - ny - dy, dx, X - nx - dx, cv2.BORDER_CONSTANT, value=(255, 255, 255))
     if np_image.shape[2] == 4:
         RGB, alpha = np_image[:, :, :3], np_image[:, :, 3:]
         alpha = alpha / 255 # type: ignore
