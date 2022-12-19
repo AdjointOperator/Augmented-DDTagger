@@ -275,7 +275,7 @@ class Predictor:
                 r=self.model.predict(ds, callbacks=[keras_pbar], verbose='0', steps=max_chunk)
             except ValueError:
                 break
-            R.append(r)
+            R.append(r.astype(np.float16))
             done=len(r)<max_chunk*batch_size
         keras_pbar.tqdm_progress.close()
         return paths, np.concatenate(R, axis=0)
