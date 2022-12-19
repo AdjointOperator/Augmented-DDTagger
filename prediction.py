@@ -14,7 +14,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from utils import dirwalk
 
 
-def get_predictions(root_path, model_path, batch_size=8, nproc: int = -1, backend: str = 'DeepDanbooru'):
+def get_predictions(root_path:str|Path, model_path:str|Path, batch_size:int=8, nproc: int = -1, backend: str = 'DeepDanbooru'):
     """Get predictions for all images in a directory. Use cache if available.
 
     Args:
@@ -28,9 +28,10 @@ def get_predictions(root_path, model_path, batch_size=8, nproc: int = -1, backen
         Tuple of (raw_predictions, paths)
     """
     img_paths = list(str(p.relative_to(root_path)) for p in dirwalk(Path(root_path)) if p.suffix.lower() in (".jpg", ".png", ".jpeg", ".bmp", ".gif", ".tiff", ".tif", ".webp"))
-    if os.path.exists(root_path + f'/prediction_cache_{backend}.h5'):
+    root_path = Path(root_path).absolute()
+    if os.path.exists(root_path / f'prediction_cache_{backend}.h5'):
         print('Loading predictions from cache')
-        with h5.File(root_path + f'/prediction_cache_{backend}.h5', 'r') as f:
+        with h5.File(root_path / f'prediction_cache_{backend}.h5', 'r') as f:
             _cached_paths: np.ndarray = f['paths'][:]  # type: ignore
             cached_preds: np.ndarray = f['preds'][:]  # type: ignore
         cached_paths = [str(p, encoding='utf8') for p in _cached_paths]
@@ -48,7 +49,7 @@ def get_predictions(root_path, model_path, batch_size=8, nproc: int = -1, backen
 
     if new_paths:
         new_paths = [Path(root_path) / p for p in new_paths]
-        predictor = Predictor(model_path=model_path, root_path=root_path, img_paths=new_paths, nproc=nproc, backend=backend)
+        predictor = Predictor(model_path=Path(model_path), root_path=root_path, img_paths=new_paths, nproc=nproc, backend=backend)
         p, a = predictor.predict(batch_size=batch_size)
         sp = [str(x.relative_to(root_path)) for x in p]
         a = a.astype(np.float16)
@@ -59,7 +60,7 @@ def get_predictions(root_path, model_path, batch_size=8, nproc: int = -1, backen
             preds = np.concatenate((cached_preds, a), axis=0)
             paths = cached_paths + sp
         print('Saving cache...')
-        with h5.File(root_path + f'/prediction_cache_{backend}.h5', 'w') as f:
+        with h5.File(root_path / f'prediction_cache_{backend}.h5', 'w') as f:
             f.create_dataset('paths', data=np.array(paths, dtype=h5.special_dtype(vlen=str)), compression='gzip', compression_opts=9)
             f.create_dataset('preds', data=preds, compression='gzip', compression_opts=9)
         print('Done.')
@@ -69,7 +70,7 @@ def get_predictions(root_path, model_path, batch_size=8, nproc: int = -1, backen
     return preds, paths
 
 
-def load_and_process_image(image, target_width, target_height, backend):
+def load_and_process_image(image:Path|Image.Image|np.ndarray, target_width:int, target_height:int, backend:str):
     """
     Transform image and pad by edge pixles.
     Args:
@@ -90,34 +91,35 @@ def load_and_process_image(image, target_width, target_height, backend):
 
             if pil_img.mode not in ("RGB", "RGBA"):
                 pil_img = pil_img.convert("RGBA")
-            image = np.array(pil_img)
+            np_image = np.array(pil_img)
             del pil_img
-            assert isinstance(image, np.ndarray)
         except Exception as e:
             with open("/tmp/fast_deepdanbooru_failed.txt", "a") as f:
                 f.write(str(p) + "\n")
             print(f"Failed to open {p}")
             print(e)
             return None
+    else:
+        np_image = image
 
-    y, x = image.shape[:2]
+    y, x = np_image.shape[:2]
     X, Y = target_width, target_height
     nx, ny = min(X, int(X * x / y)), min(Y, int(Y * y / x))
-    image = cv2.resize(image, (nx, ny), interpolation=cv2.INTER_AREA)
+    np_image = cv2.resize(np_image, (nx, ny), interpolation=cv2.INTER_AREA)
     dx, dy = (X - nx) // 2, (Y - ny) // 2
     if backend == 'DeepDanbooru':
-        image = cv2.copyMakeBorder(image, dy, Y - ny - dy, dx, X - nx - dx, cv2.BORDER_REPLICATE)
+        image = cv2.copyMakeBorder(np_image, dy, Y - ny - dy, dx, X - nx - dx, cv2.BORDER_REPLICATE)
     else:
-        image = cv2.copyMakeBorder(image, dy, Y - ny - dy, dx, X - nx - dx, cv2.BORDER_CONSTANT, value=(255, 255, 255))
-    if image.shape[2] == 4:
-        RGB, alpha = image[:, :, :3], image[:, :, 3:]
-        alpha = alpha / 255
+        image = cv2.copyMakeBorder(np_image, dy, Y - ny - dy, dx, X - nx - dx, cv2.BORDER_CONSTANT, value=(255, 255, 255))
+    if np_image.shape[2] == 4:
+        RGB, alpha = np_image[:, :, :3], np_image[:, :, 3:]
+        alpha = alpha / 255 # type: ignore
         RGB[:] = (1 - alpha) + alpha * RGB
-        image = RGB
+        np_image = RGB
     if backend == 'DeepDanbooru':
-        return image.astype(np.float32) / 255
+        return np_image.astype(np.float32) / 255
     else:
-        return cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        return cv2.cvtColor(np_image, cv2.COLOR_RGB2BGR)
 
 
 def worker(x):
@@ -133,7 +135,7 @@ def worker(x):
 
 
 class DataLoader:
-    def __init__(self, root_path=None, img_paths=None, nproc: int = 8, maximum_look_ahead: int = 128, backend='DeepDanbooru'):
+    def __init__(self, root_path:Path|None=None, img_paths:List[Path]|None=None, nproc: int = 8, maximum_look_ahead: int = 128, backend='DeepDanbooru'):
         """Multi-threaded image dataloader for deepdanbooru. All necessary preprocesses are done in this function.
 
         Args:
@@ -185,7 +187,7 @@ class DataLoader:
 
 
 class Predictor:
-    def __init__(self, model_path, root_path=None, img_paths=None, nproc: int = -1, backend='DeepDanbooru'):
+    def __init__(self, model_path:Path, root_path:Path|None=None, img_paths:List[Path]|None=None, nproc: int = -1, backend='DeepDanbooru'):
         """Run the prediction on a directory of images
 
         Args:

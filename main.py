@@ -64,7 +64,7 @@ def create_config(args):
     tagger_conf['categories_path'] = args.categories_path if args.categories_path is not None else tagger_conf['categories_path']
 
     if not tagger_conf['tags_path']:
-        print(f'Using default categories path for {tagger_conf["backend"]}.')
+        print(f'Using default tags path for {tagger_conf["backend"]}.')
         if tagger_conf['backend'] == 'DeepDanbooru':
             parent = Path(predictor_conf['model_path']).parent
             tagger_conf['tags_path'] = str(parent / 'tags.txt')

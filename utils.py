@@ -1,8 +1,9 @@
 from pathlib import Path
 import numpy as np
+from typing import Generator as Gen
 
 
-def dirwalk(path: Path):
+def dirwalk(path: Path)->Gen[Path, None, None]:
     """Walks through a directory and yields all file paths in the directory and subdirectories"""
     for fname in path.iterdir():
         if fname.is_dir():
