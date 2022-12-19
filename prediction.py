@@ -32,8 +32,15 @@ def get_predictions(root_path: str | Path, model_path: str | Path, batch_size: i
     if os.path.exists(root_path / f'prediction_cache_{backend}.h5'):
         print('Loading predictions from cache')
         with h5.File(root_path / f'prediction_cache_{backend}.h5', 'r') as f:
-            _cached_paths: np.ndarray = f['paths'][:]  # type: ignore
-            cached_preds: np.ndarray = f['preds'][:]  # type: ignore
+            _cached_paths = []
+            cached_preds = []
+            for _, g in f.items():
+                cached_paths_chunk: np.ndarray = g['paths'][:]  # type: ignore
+                cached_preds_chunk: np.ndarray = g['preds'][:]  # type: ignore
+                _cached_paths.append(cached_paths_chunk)
+                cached_preds.append(cached_preds_chunk)
+            _cached_paths = np.concatenate(_cached_paths, axis=0)
+            cached_preds = np.concatenate(cached_preds, axis=0)
         cached_paths = [str(p, encoding='utf8') for p in _cached_paths]
         img_paths_set = set(img_paths)
         mask = np.array([p in img_paths_set for p in cached_paths])
@@ -50,7 +57,11 @@ def get_predictions(root_path: str | Path, model_path: str | Path, batch_size: i
     if new_paths:
         new_paths = [Path(root_path) / p for p in new_paths]
         predictor = Predictor(model_path=Path(model_path), root_path=root_path, img_paths=new_paths, nproc=nproc, backend=backend)
-        p, a = predictor.predict(batch_size=batch_size, max_chunk=max_chunk)
+        if cached_preds is not None:
+            with h5.File(root_path / f'prediction_cache_{backend}.h5', 'w') as f:
+                f.create_dataset('0/paths', data=np.array(cached_paths, dtype=h5.special_dtype(vlen=str)), compression='lzf')
+                f.create_dataset('0/preds', data=cached_preds, compression='lzf')
+        p, a = predictor.predict(batch_size=batch_size, max_chunk=max_chunk, cache_file=root_path / f'prediction_cache_{backend}.h5')
         sp = [str(x.relative_to(root_path)) for x in p]
         a = a.astype(np.float16)
         if cached_preds is None:
@@ -59,10 +70,10 @@ def get_predictions(root_path: str | Path, model_path: str | Path, batch_size: i
         else:
             preds = np.concatenate((cached_preds, a), axis=0)
             paths = cached_paths + sp
-        print('Saving cache...')
-        with h5.File(root_path / f'prediction_cache_{backend}.h5', 'w') as f:
-            f.create_dataset('paths', data=np.array(paths, dtype=h5.special_dtype(vlen=str)), compression='gzip', compression_opts=9)
-            f.create_dataset('preds', data=preds, compression='lzf')
+        # print('Saving cache...')
+        # with h5.File(root_path / f'prediction_cache_{backend}.h5', 'w') as f:
+        #     f.create_dataset('paths', data=np.array(paths, dtype=h5.special_dtype(vlen=str)), compression='gzip', compression_opts=9)
+        #     f.create_dataset('preds', data=preds, compression='lzf')
         print('Done.')
     else:
         preds = cached_preds
@@ -210,17 +221,22 @@ class Predictor:
     def load_model(self):
         import tensorflow as tf
         # Suppress tensorflow warnings
+        print("Loading model...", end="", flush=True)
         tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
         model: tf.keras.Model = tf.keras.models.load_model(self.model_path)  # type: ignore
         assert model is not None, "Model is not loaded, please check the model path"
         # skip sigmoid layer
         self.model: tf.keras.Model = tf.keras.Model(inputs=model.input, outputs=model.layers[-2].output)
+        print(" Done")
 
-    def predict(self, batch_size: int = 8, max_chunk=500) -> Tuple[List[Path], np.ndarray]:
+    def predict(self, batch_size: int = 8, max_chunk=500, cache_file: str | Path | None = None) -> Tuple[List[Path], np.ndarray]:
         """Load tf model and predict on all images registered in the dataloader. Notice that this function will load all predictions into memory, and the returned path order is generally not the same as the input path order due to the multi-threading.
 
         Args:
             batch_size (int, optional): Defaults to 8.
+            max_chunk (int, optional): Maximum number of batches to load at once. Defaults to 500.
+            cache_file (str|Path|None, optional): Path to cache file. If this is not None, the predictions will be cached to this file. Defaults to None.
+
 
         Returns:
             Tuple[List[Path], np.ndarray]: (image paths, predictions)
@@ -240,7 +256,7 @@ class Predictor:
             tf.config.experimental.set_memory_growth(device, True)
 
         self.load_model() if self.model is None else None
-        paths = []
+        paths: List[Path] = []
 
         def gen():
             for path, arr in self.dataloader():
@@ -269,12 +285,24 @@ class Predictor:
         ds = ds.batch(batch_size)
         R = []
         done = False
+        i = 0
         while not done:
+            i += 1
             try:
                 r = self.model.predict(ds, callbacks=[keras_pbar], verbose='0', steps=max_chunk)
             except ValueError:
                 break
+            r = r.astype(np.float16)
             R.append(r.astype(np.float16))
             done = len(r) < max_chunk * batch_size
+            if cache_file is None:
+                continue
+            with h5.File(cache_file, 'a') as f:
+                root_path = Path(cache_file).parent
+                f.create_dataset(f'{i}/preds', data=r, compression='lzf')
+                _paths = [str(p.relative_to(root_path)) for p in paths[-len(r):]]
+                _paths = np.array(_paths, dtype=h5.special_dtype(vlen=str))
+                f.create_dataset(f'{i}/paths', data=_paths, compression='lzf')
+
         keras_pbar.tqdm_progress.close()
         return paths, np.concatenate(R, axis=0)
