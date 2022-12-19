@@ -98,7 +98,7 @@ class TagConfig:
         self.tags = np.array(tags)
 
     def generate_mask_deepdanbooru(self):
-        with open(self.categories_path) as f:
+        with open(self.categories_path, 'r') as f:
             cate_list = json.load(f)
         cate_list = sorted(cate_list, key=lambda k: k['start_index'])
         cate_names = [cate['name'] for cate in cate_list]
@@ -152,7 +152,7 @@ class TagConfig:
 
 
 class TagHandler:
-    def __init__(self, tag_config: TagConfig, paths: List[Path]|List[str], preds: np.ndarray):
+    def __init__(self, tag_config: TagConfig, paths: List[Path] | List[str], preds: np.ndarray):
         """Master class for handling tags
 
         Args:
@@ -168,7 +168,7 @@ class TagHandler:
         self.preds = preds
         self.separator = tag_config.separator
 
-    def trim_tags(self, tags:List[str], preds: np.ndarray, thres: np.ndarray):
+    def trim_tags(self, tags: List[str], preds: np.ndarray, thres: np.ndarray):
         """Trim new_tags to fit the token limit
 
         Args:
@@ -219,7 +219,7 @@ class TagHandler:
             tags = np.array(tags)[order].tolist()
         return tags
 
-    def process_tag(self, prepend:List[str], append:List[str], new_tags:List[str], old_tags:List[str]|None, preds: np.ndarray, thres: np.ndarray):
+    def process_tag(self, prepend: List[str], append: List[str], new_tags: List[str], old_tags: List[str] | None, preds: np.ndarray, thres: np.ndarray):
         """Interfacing function to apply all the tag processing steps
 
         Args:

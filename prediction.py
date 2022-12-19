@@ -14,7 +14,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from utils import dirwalk
 
 
-def get_predictions(root_path:str|Path, model_path:str|Path, batch_size:int=8, nproc: int = -1, max_chunk:int=500, backend: str = 'DeepDanbooru'):
+def get_predictions(root_path: str | Path, model_path: str | Path, batch_size: int = 8, nproc: int = -1, max_chunk: int = 500, backend: str = 'DeepDanbooru'):
     """Get predictions for all images in a directory. Use cache if available.
 
     Args:
@@ -70,7 +70,7 @@ def get_predictions(root_path:str|Path, model_path:str|Path, batch_size:int=8, n
     return preds, paths
 
 
-def load_and_process_image(image:Path|Image.Image|np.ndarray, target_width:int, target_height:int, backend:str):
+def load_and_process_image(image: Path | Image.Image | np.ndarray, target_width: int, target_height: int, backend: str):
     """
     Transform image and pad by edge pixles.
     Args:
@@ -113,7 +113,7 @@ def load_and_process_image(image:Path|Image.Image|np.ndarray, target_width:int, 
         np_image = cv2.copyMakeBorder(np_image, dy, Y - ny - dy, dx, X - nx - dx, cv2.BORDER_CONSTANT, value=(255, 255, 255))
     if np_image.shape[2] == 4:
         RGB, alpha = np_image[:, :, :3], np_image[:, :, 3:]
-        alpha = alpha / 255 # type: ignore
+        alpha = alpha / 255  # type: ignore
         RGB[:] = (1 - alpha) + alpha * RGB
         np_image = RGB
     if backend == 'DeepDanbooru':
@@ -135,7 +135,7 @@ def worker(x):
 
 
 class DataLoader:
-    def __init__(self, root_path:Path|None=None, img_paths:List[Path]|None=None, nproc: int = 8, maximum_look_ahead: int = 128, backend='DeepDanbooru'):
+    def __init__(self, root_path: Path | None = None, img_paths: List[Path] | None = None, nproc: int = 8, maximum_look_ahead: int = 128, backend='DeepDanbooru'):
         """Multi-threaded image dataloader for deepdanbooru. All necessary preprocesses are done in this function.
 
         Args:
@@ -148,7 +148,7 @@ class DataLoader:
         self.root = root_path
         self.nproc = nproc if nproc > 0 else None
         self.maximum_look_ahead = maximum_look_ahead
-        self.backend=backend
+        self.backend = backend
         if img_paths is None:
             assert root_path is not None
             self.img_paths = list(p for p in dirwalk(Path(root_path)) if p.suffix.lower() in (".jpg", ".png", ".jpeg", ".bmp", ".gif", ".tiff", ".tif", ".webp"))
@@ -174,7 +174,6 @@ class DataLoader:
         manager = Manager()
         H, W = (512, 512) if backend == 'DeepDanbooru' else (448, 448)
         q = manager.Queue(maxsize=maximum_look_ahead)
-        
 
         def gen(q, imgs):
             for img in imgs:
@@ -187,7 +186,7 @@ class DataLoader:
 
 
 class Predictor:
-    def __init__(self, model_path:Path, root_path:Path|None=None, img_paths:List[Path]|None=None, nproc: int = -1, backend='DeepDanbooru'):
+    def __init__(self, model_path: Path, root_path: Path | None = None, img_paths: List[Path] | None = None, nproc: int = -1, backend='DeepDanbooru'):
         """Run the prediction on a directory of images
 
         Args:
@@ -262,20 +261,20 @@ class Predictor:
 
             def on_predict_batch_end(self, batch, logs=None):
                 remaining = self.total - self.N
-                diff=min(remaining, self.batch_size)
+                diff = min(remaining, self.batch_size)
                 self.tqdm_progress.update(diff)
                 self.N += diff
 
         keras_pbar = KerasPbar(len(self.img_paths), batch_size, desc="Predicting", unit="image")
         ds = ds.batch(batch_size)
-        R=[]
-        done=False
+        R = []
+        done = False
         while not done:
             try:
-                r=self.model.predict(ds, callbacks=[keras_pbar], verbose='0', steps=max_chunk)
+                r = self.model.predict(ds, callbacks=[keras_pbar], verbose='0', steps=max_chunk)
             except ValueError:
                 break
             R.append(r.astype(np.float16))
-            done=len(r)<max_chunk*batch_size
+            done = len(r) < max_chunk * batch_size
         keras_pbar.tqdm_progress.close()
         return paths, np.concatenate(R, axis=0)
