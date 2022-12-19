@@ -62,7 +62,7 @@ def get_predictions(root_path:str|Path, model_path:str|Path, batch_size:int=8, n
         print('Saving cache...')
         with h5.File(root_path / f'prediction_cache_{backend}.h5', 'w') as f:
             f.create_dataset('paths', data=np.array(paths, dtype=h5.special_dtype(vlen=str)), compression='gzip', compression_opts=9)
-            f.create_dataset('preds', data=preds, compression='gzip', compression_opts=9)
+            f.create_dataset('preds', data=preds, compression='lzf')
         print('Done.')
     else:
         preds = cached_preds
