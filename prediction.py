@@ -14,7 +14,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from utils import dirwalk
 
 
-def get_predictions(root_path:str|Path, model_path:str|Path, batch_size:int=8, nproc: int = -1, backend: str = 'DeepDanbooru'):
+def get_predictions(root_path:str|Path, model_path:str|Path, batch_size:int=8, nproc: int = -1, max_chunk:int=500, backend: str = 'DeepDanbooru'):
     """Get predictions for all images in a directory. Use cache if available.
 
     Args:
@@ -50,7 +50,7 @@ def get_predictions(root_path:str|Path, model_path:str|Path, batch_size:int=8, n
     if new_paths:
         new_paths = [Path(root_path) / p for p in new_paths]
         predictor = Predictor(model_path=Path(model_path), root_path=root_path, img_paths=new_paths, nproc=nproc, backend=backend)
-        p, a = predictor.predict(batch_size=batch_size)
+        p, a = predictor.predict(batch_size=batch_size, max_chunk=max_chunk)
         sp = [str(x.relative_to(root_path)) for x in p]
         a = a.astype(np.float16)
         if cached_preds is None:
@@ -217,7 +217,7 @@ class Predictor:
         # skip sigmoid layer
         self.model: tf.keras.Model = tf.keras.Model(inputs=model.input, outputs=model.layers[-2].output)
 
-    def predict(self, batch_size: int = 8) -> Tuple[List[Path], np.ndarray]:
+    def predict(self, batch_size: int = 8, max_chunk=500) -> Tuple[List[Path], np.ndarray]:
         """Load tf model and predict on all images registered in the dataloader. Notice that this function will load all predictions into memory, and the returned path order is generally not the same as the input path order due to the multi-threading.
 
         Args:
@@ -257,22 +257,25 @@ class Predictor:
                 self.batch_size = batch_size
                 self.tqdm_params = tqdm_params
                 self.total = total
-
-            def on_predict_batch_end(self, batch, logs=None):
-                remaining = self.total - (batch + 1) * self.batch_size
-                N = int(self.batch_size * (batch - self.prev_predict_batch))
-                self.tqdm_progress.update(min(remaining, N))
-                self.prev_predict_batch = batch
-
-            def on_predict_begin(self, logs=None):
-                self.prev_predict_batch = 0
+                self.N = 0
                 self.tqdm_progress = tqdm(total=self.total, **self.tqdm_params)
 
-            def on_predict_end(self, logs=None):
-                remaining = self.total - self.tqdm_progress.n
-                self.tqdm_progress.update(remaining)
+            def on_predict_batch_end(self, batch, logs=None):
+                remaining = self.total - self.N
+                diff=min(remaining, self.batch_size)
+                self.tqdm_progress.update(diff)
+                self.N += diff
 
         keras_pbar = KerasPbar(len(self.img_paths), batch_size, desc="Predicting", unit="image")
         ds = ds.batch(batch_size)
-        r = self.model.predict(ds, callbacks=[keras_pbar], verbose='0')
-        return paths, r
+        R=[]
+        done=False
+        while not done:
+            try:
+                r=self.model.predict(ds, callbacks=[keras_pbar], verbose='0', steps=max_chunk)
+            except ValueError:
+                break
+            R.append(r)
+            done=len(r)<max_chunk*batch_size
+        keras_pbar.tqdm_progress.close()
+        return paths, np.concatenate(R, axis=0)

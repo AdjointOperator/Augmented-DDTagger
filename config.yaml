@@ -5,6 +5,7 @@ predictor:
   model_path: YOUR_MODEL_PATH
   batch_size: 32
   nproc: -1
+  max_chunk: 1000
 
 tagger:
   add_tags: []

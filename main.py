@@ -26,7 +26,8 @@ def add_args():
     parser.add_argument('--order', type=str, default=None, help='How to sort tags. Options: "alphabetical", "probability", "probability-reweighted"')
     parser.add_argument('--batch-size', '-bs', type=int, default=None, help='Batch size for predictions')
     parser.add_argument('--nproc', '-j', type=int, default=None, help='Number of workers for dataloader')
-
+    parser.add_argument('--max-chunk', type=int, default=None, help='Maximum number of images to run keras.predict on at once')
+    
     args = parser.parse_args()
     return args
 
@@ -42,6 +43,8 @@ def create_config(args):
     predictor_conf['batch_size'] = args.batch_size if args.batch_size is not None else predictor_conf['batch_size']
     predictor_conf['model_path'] = args.model if args.model is not None else predictor_conf['model_path']
     predictor_conf['nproc'] = args.nproc if args.nproc is not None else predictor_conf['nproc']
+    predictor_conf['max_chunk'] = args.max_chunk if args.max_chunk is not None else predictor_conf['max_chunk']
+    
     tagger_conf['categories_path'] = args.categories_path if args.categories_path is not None else tagger_conf['categories_path']
 
     predictor_conf['root_path'] = args.root_path if args.root_path is not None else config['root_path']
