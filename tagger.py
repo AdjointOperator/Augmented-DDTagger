@@ -168,7 +168,7 @@ class TagHandler:
         self.preds = preds
         self.separator = tag_config.separator
 
-    def trim_tags(self, tags: List[str], preds: np.ndarray, thres: np.ndarray):
+    def trim_tags(self, tags: List[str], preds: np.ndarray, thres: np.ndarray) -> Tuple[List[str], np.ndarray, np.ndarray]:
         """Trim new_tags to fit the token limit
 
         Args:
@@ -180,7 +180,7 @@ class TagHandler:
             trimmed tags
         """
         if self.config.token_limit < 0:
-            return tags
+            return tags, preds, thres
         t = sigmoid(thres)
         p = sigmoid(preds)
         order = np.argsort((p - t) / (1 - t))[::-1]
@@ -189,7 +189,8 @@ class TagHandler:
         token_sizes[1:] += len(re.findall(r'[^\s]', self.separator))
         cum_size = np.cumsum(token_sizes)
         cut = np.searchsorted(cum_size, self.config.token_limit - 2, side='left')
-        return np.array(tags)[order[:cut]].tolist()
+        mask = order[:cut]
+        return np.array(tags)[mask].tolist(), preds[mask], thres[mask]
 
     def sort_tags(self, tags, preds: np.ndarray, thres: np.ndarray):
         """Sort tags according to the config. For probability-reweighted, the order is based on (p-thres)/(1-thres).
@@ -233,7 +234,7 @@ class TagHandler:
         Returns:
             processed tags
         """
-        new_tags = self.trim_tags(new_tags, preds, thres)
+        new_tags, preds, thres = self.trim_tags(new_tags, preds, thres)
         if self.config.overwrite_mode == 'replace' or old_tags is None:
             tags = self.sort_tags(new_tags, preds, thres)
         elif self.config.overwrite_mode == 'prepend':

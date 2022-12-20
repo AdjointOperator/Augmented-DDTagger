@@ -298,6 +298,7 @@ class Predictor:
             if cache_file is None:
                 continue
             with h5.File(cache_file, 'a') as f:
+                # save to cache after each chunk
                 root_path = Path(cache_file).parent
                 f.create_dataset(f'{i}/preds', data=r, compression='lzf')
                 _paths = [str(p.relative_to(root_path)) for p in paths[-len(r):]]
