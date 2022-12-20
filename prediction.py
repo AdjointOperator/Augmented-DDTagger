@@ -46,7 +46,8 @@ def get_predictions(root_path: str | Path, model_path: str | Path, batch_size: i
         mask = np.array([p in img_paths_set for p in cached_paths])
         cached_paths = np.array(cached_paths)[mask].tolist()
         cached_preds = cached_preds[mask]
-        new_paths = [p for p in img_paths if p not in set(cached_paths)]
+        cache_paths_set = set(cached_paths)
+        new_paths = [p for p in img_paths if p not in cache_paths_set]
         print(f'Found {len(new_paths)} new images, {len(img_paths)-len(new_paths)} already cached')
     else:
         print(f'No cache found. Predicting all {len(img_paths)} images.')
