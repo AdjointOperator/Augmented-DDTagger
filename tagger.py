@@ -128,6 +128,13 @@ class TagConfig:
             mask[self.wd_convnext_raw_tags[:, 2].astype(np.int32) == categories[name]] = True
         self.mask = mask
 
+        # apply hide tags
+        if len(self.hide_tags) > 0:
+            for tag in self.hide_tags:
+                idx = np.where(self.tags_raw == tag)[0]
+                assert len(idx) > 0, f'No tag {tag} found for hide tags'
+                self.mask[idx] = False
+                
     def generate_mask(self):
         if self.backend == 'DeepDanbooru':
             self.generate_mask_deepdanbooru()
