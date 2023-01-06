@@ -7,6 +7,7 @@ from pathlib import Path
 
 import h5py as h5
 import numpy as np
+from transformers import CLIPTokenizer  # type: ignore
 
 from utils import invsigmoid, sigmoid
 
@@ -74,11 +75,10 @@ class TagConfig:
         self.load_tags()
         self.generate_mask()
         self.generate_thresholds()
-        with h5.File('token_lengths.h5', 'r') as f:
-            k1 = 'underscores' if not self.remove_underscores else 'no underscores'
-            k2 = 'escape' if self.escape_specials else 'no escape'
-            self.token_lengths = f[f'{k1}, {k2}'][:]  # type: ignore
-
+        tokenizer: CLIPTokenizer = CLIPTokenizer.from_pretrained('models/clip_tokenizer')
+        tokens = tokenizer(list(self.tags), add_special_tokens=False, padding=False, truncation=False)
+        self.token_lengths = np.array([len(token) for token in tokens['input_ids']]) # type: ignore
+        print(self.token_lengths[:100])
     def load_tags(self):
         # load tags and do preprocessing
         if self.backend == 'DeepDanbooru':
@@ -134,7 +134,7 @@ class TagConfig:
                 idx = np.where(self.tags_raw == tag)[0]
                 assert len(idx) > 0, f'No tag {tag} found for hide tags'
                 self.mask[idx] = False
-                
+
     def generate_mask(self):
         if self.backend == 'DeepDanbooru':
             self.generate_mask_deepdanbooru()

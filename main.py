@@ -7,7 +7,7 @@ import yaml
 
 def add_args():
     parser = ArgumentParser()
-    parser.add_argument('--config', type=str, default='config.yaml')
+    parser.add_argument('--config', '-c', type=str, default='config.yaml')
     parser.add_argument('--root-path', '-d', type=str, default=None, help='Root path of images to be tagged')
     parser.add_argument('--model', '-m', type=str, default=None, help='Model to use for predictions')
     parser.add_argument('--backend', '-b', type=str, default=None, help='Backend to use for predictions. Choose from "DeepDanbooru" and "ConvNext"')
@@ -66,6 +66,11 @@ def create_config(args):
     tagger_conf['order'] = args.order if args.order is not None else tagger_conf['order']
     tagger_conf['categories_path'] = args.categories_path if args.categories_path is not None else tagger_conf['categories_path']
 
+    assert predictor_conf['backend'] in ['DeepDanbooru', 'ConvNext'], f'Invalid backend: {predictor_conf["backend"]}'
+    # Set default model path if not specified
+    if predictor_conf['model_path'] is None:
+        predictor_conf['model_path'] = 'models/deepbooru/model-resnet_custom_v3.h5' if predictor_conf['backend'] == 'DeepDanbooru' else 'models/wd-v1-4-convnext-tagger'
+
     if not tagger_conf['tags_path']:
         print(f'Using default tags path for {tagger_conf["backend"]}.')
         if tagger_conf['backend'] == 'DeepDanbooru':
@@ -87,5 +92,5 @@ if __name__ == '__main__':
     tagger_conf, predictor_conf = create_config(args)
     pred, paths = get_predictions(**predictor_conf)
     tag_config = TagConfig(**tagger_conf)
-    tag_handler = TagHandler(tag_config, paths, pred)
+    tag_handler = TagHandler(tag_config, paths, pred)  # type: ignore
     tag_handler.update_all()

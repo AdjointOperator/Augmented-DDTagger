@@ -1,27 +1,28 @@
-root_path: YOUR_IMAGE_ROOT_PATH
-backend: ConvNext
+root_path: YOUR_IMAGE_ROOT_PATH # Path to the root folder of your images. Usually not used as the path will be specified in the command line.
+backend: ConvNext # ConvNext or DeepDanbooru. Case sensitive.
 
 predictor:
-  model_path: YOUR_MODEL_PATH
-  batch_size: 32
-  nproc: -1
-  max_chunk: 1000
+  model_path: # Path to the model. Leave empty to use models under `models/`.
+  batch_size: 32 # Batch size used for inference. Lower it if you get OOM errors.
+  nproc: -1 # Number of processes to use for dataloader. -1 means all available.
+  max_chunk: 10 # Number of batches to process before a save to the cache file. The default value of 10 is fine for most cases.
 
 tagger:
-  add_tags: []
+  add_tags: [] # Tags to add to all images. Can only be used with alphabetical order.
   prepend_tags: []
   append_tags: []
-  include_categories: [General]
+  include_categories: [General] # Categories to include. [General, Character, System] for DeepDanbooru, [General, System] for ConvNext
   default_threshold: 0.6
-  escape_specials: false
-  hide_tags: []
+  escape_specials: false # Escape special characters in tags. Usually not needed.
+  hide_tags: [] # Bad tags you want to hide from the output. 
   order: alphabetical # alphabetical, probability, probability-reweighted
-  overwrite_mode: replace
-  remove_underscores: true
-  separator: ','
-  token_limit: 65
+  overwrite_mode: replace # replace, append, prepend. What to do if the text file already exists.
+  remove_underscores: true # Remove underscores from tags. Set false if you are using naifu-diffusion with tag processing.
+  separator: ',' # Separator between tags. Use ' ' for naifu-diffusion with tag processing.
+  token_limit: 70 # Maximum number of tokens for the output. Start and end tokens, add/prepend/append tags are not counted.
 
-  custom_threshold_tags:
+  # Tags that have a custom threshold. The order of the tags must match the order of the thresholds. Notice that the ConvNext model's output is generally lower than the DeepDanbooru model's output.
+  custom_threshold_tags: 
   - blush
   - facial_mark
   - whisker_markings
@@ -32,5 +33,5 @@ tagger:
   - 0.1
   - 0.1
 
-  categories_path: 
-  tags_path:
+  categories_path: # Only used for DeepDanbooru. Leave empty unless using a custom category list.
+  tags_path: # Leave empty unless using a custom tag list.
