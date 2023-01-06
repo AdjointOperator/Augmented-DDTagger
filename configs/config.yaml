@@ -22,7 +22,7 @@ tagger:
   token_limit: 70 # Maximum number of tokens for the output. Start and end tokens, add/prepend/append tags are not counted.
 
   # Tags that have a custom threshold. The order of the tags must match the order of the thresholds. Notice that the ConvNext model's output is generally lower than the DeepDanbooru model's output.
-  custom_threshold_tags: 
+  custom_threshold_tags:
   - blush
   - facial_mark
   - whisker_markings

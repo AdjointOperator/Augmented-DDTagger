@@ -1,0 +1,37 @@
+root_path: YOUR_IMAGE_ROOT_PATH 
+backend: ConvNext 
+
+predictor:
+  model_path: 
+  batch_size: 32 
+  nproc: -1 
+  max_chunk: 10 
+
+tagger:
+  add_tags: [] 
+  prepend_tags: []
+  append_tags: []
+  include_categories: [General] 
+  default_threshold: 0.6
+  escape_specials: false 
+  hide_tags: []
+  order: alphabetical 
+  overwrite_mode: replace 
+  remove_underscores: false
+  separator: ' ' 
+  token_limit: 65535
+
+  
+  custom_threshold_tags: 
+  - blush
+  - facial_mark
+  - whisker_markings
+  - miqo'te
+  custom_thresholds:
+  - 0.4
+  - 0.1
+  - 0.1
+  - 0.1
+
+  categories_path: 
+  tags_path: 
