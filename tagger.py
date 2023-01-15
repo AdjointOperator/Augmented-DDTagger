@@ -78,7 +78,7 @@ class TagConfig:
         tokenizer: CLIPTokenizer = CLIPTokenizer.from_pretrained('models/clip_tokenizer')
         tokens = tokenizer(list(self.tags), add_special_tokens=False, padding=False, truncation=False)
         self.token_lengths = np.array([len(token) for token in tokens['input_ids']]) # type: ignore
-        print(self.token_lengths[:100])
+
     def load_tags(self):
         # load tags and do preprocessing
         if self.backend == 'DeepDanbooru':
