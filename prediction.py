@@ -278,7 +278,7 @@ class Predictor:
 
             def on_predict_batch_end(self, batch, logs=None):
                 remaining = self.total - self.N
-                diff = min(remaining, self.batch_size)
+                diff = min(remaining, self.batch_size*max_chunk)
                 self.tqdm_progress.update(diff)
                 self.N += diff
 
@@ -290,7 +290,8 @@ class Predictor:
         while not done:
             i += 1
             try:
-                r = self.model.predict(ds, callbacks=[keras_pbar], verbose='0', steps=max_chunk)
+                r = self.model.predict(ds, verbose='0', steps=max_chunk)
+                keras_pbar.on_predict_batch_end(0)
             except ValueError:
                 break
             r = r.astype(np.float16)
