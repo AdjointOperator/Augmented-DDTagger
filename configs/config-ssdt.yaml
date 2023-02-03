@@ -1,5 +1,5 @@
 root_path: YOUR_IMAGE_ROOT_PATH
-backend: ConvNext
+backend: WD14
 
 predictor:
   model_path:

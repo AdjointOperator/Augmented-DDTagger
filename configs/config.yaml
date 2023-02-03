@@ -1,5 +1,5 @@
 root_path: YOUR_IMAGE_ROOT_PATH # Path to the root folder of your images. Usually not used as the path will be specified in the command line.
-backend: ConvNext # ConvNext or DeepDanbooru. Case sensitive.
+backend: WD14 # WD14, WD14-SwinV2 ,WD14-ConvNext or DeepDanbooru. Case sensitive.
 
 predictor:
   model_path: # Path to the model. Leave empty to use models under `models/`.
@@ -11,7 +11,7 @@ tagger:
   add_tags: [] # Tags to add to all images. Can only be used with alphabetical order.
   prepend_tags: []
   append_tags: []
-  include_categories: [General] # Categories to include. [General, Character, System] for DeepDanbooru, [General, System] for ConvNext
+  include_categories: [General] # Categories to include. [General, Character, System] for DeepDanbooru, [General, System] for WD14 taggers
   default_threshold: 0.6
   escape_specials: false # Escape special characters in tags. Usually not needed.
   hide_tags: [] # Bad tags you want to hide from the output. 
@@ -21,7 +21,7 @@ tagger:
   separator: ',' # Separator between tags. Use ' ' for naifu-diffusion with tag processing.
   token_limit: 70 # Maximum number of tokens for the output. Start and end tokens, add/prepend/append tags are not counted.
 
-  # Tags that have a custom threshold. The order of the tags must match the order of the thresholds. Notice that the ConvNext model's output is generally lower than the DeepDanbooru model's output.
+  # Tags that have a custom threshold. The order of the tags must match the order of the thresholds. Notice that the WD14 models' outputs are generally lower than the DeepDanbooru model's output.
   custom_threshold_tags:
   - blush
   - facial_mark

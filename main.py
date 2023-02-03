@@ -2,15 +2,16 @@ from argparse import ArgumentParser
 from prediction import get_predictions
 from tagger import TagHandler, TagConfig
 from pathlib import Path
+import os
 import yaml
 
 
 def add_args():
     parser = ArgumentParser()
-    parser.add_argument('--config', '-c', type=str, default='config.yaml')
+    parser.add_argument('--config', '-c', type=str, default='configs/config.yaml')
     parser.add_argument('--root-path', '-d', type=str, default=None, help='Root path of images to be tagged')
     parser.add_argument('--model', '-m', type=str, default=None, help='Model to use for predictions')
-    parser.add_argument('--backend', '-b', type=str, default=None, help='Backend to use for predictions. Choose from "DeepDanbooru" and "ConvNext"')
+    parser.add_argument('--backend', '-b', type=str, default=None, help='Backend to use for predictions. Choose from "DeepDanbooru" and "WD14"')
     parser.add_argument('--categories-path', '-mc', type=str, default=None, help='Model config to use for predictions')
     parser.add_argument('--default-threshold', '-t', type=float, default=None, help='Default threshold for tags')
     parser.add_argument('--custom-threshold-tags', '-ctag', type=str, nargs='+', default=None, help='Tags to apply custom thresholds to. Must be in the same order as custom-thresholds')
@@ -66,10 +67,24 @@ def create_config(args):
     tagger_conf['order'] = args.order if args.order is not None else tagger_conf['order']
     tagger_conf['categories_path'] = args.categories_path if args.categories_path is not None else tagger_conf['categories_path']
 
-    assert predictor_conf['backend'] in ['DeepDanbooru', 'ConvNext'], f'Invalid backend: {predictor_conf["backend"]}'
+    assert predictor_conf['backend'] in ['DeepDanbooru', 'WD14-ConvNext', 'WD14-SwinV2', 'WD14'], f'Invalid backend: {predictor_conf["backend"]}'
+
     # Set default model path if not specified
     if predictor_conf['model_path'] is None:
-        predictor_conf['model_path'] = 'models/deepbooru/model-resnet_custom_v3.h5' if predictor_conf['backend'] == 'DeepDanbooru' else 'models/wd-v1-4-convnext-tagger'
+        if predictor_conf['backend'] == 'DeepDanbooru' and os.path.isfile('models/deepbooru/model-resnet_custom_v3.h5'):
+            predictor_conf['model_path'] = 'models/deepbooru/model-resnet_custom_v3.h5'
+        elif (predictor_conf['backend'] == 'WD14-SwinV2' or predictor_conf['backend'] == 'WD14') and\
+                os.path.isdir('models/wd-v1-4-swinv2-tagger-v2'):
+            predictor_conf['model_path'] = 'models/wd-v1-4-swinv2-tagger-v2'
+            predictor_conf['backend'] = 'WD14-SwinV2'
+        elif (predictor_conf['backend'] == 'WD14-ConvNext' or predictor_conf['backend'] == 'WD14') and\
+                os.path.isdir('models/wd-v1-4-convnext-tagger'):
+            predictor_conf['model_path'] = 'models/wd-v1-4-convnext-tagger'
+            predictor_conf['backend'] = 'WD14-ConvNext'
+        else:
+            if predictor_conf['backend'] == 'WD14':
+                raise ValueError(f'WD14 backend specified but no model found. Please specify a model path.')
+            raise ValueError(f'Backend {predictor_conf["backend"]} not supported.')
 
     if not tagger_conf['tags_path']:
         print(f'Using default tags path for {tagger_conf["backend"]}.')

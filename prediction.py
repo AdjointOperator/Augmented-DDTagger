@@ -22,7 +22,7 @@ def get_predictions(root_path: str | Path, model_path: str | Path, batch_size: i
         model_path (pathlike): Path to model file.
         batch_size (int, optional): Batch size for prediction. Defaults to 8.
         nproc (int, optional): Number of processes to use in the dataloader. Defaults to -1 to use all available.
-        backend (str, optional): Backend to use. Defaults to 'DeepDanbooru'. Also available: 'ConvNext'
+        backend (str, optional): Backend to use. Defaults to 'DeepDanbooru'. Also available: 'WD14'
 
     Returns:
         Tuple of (raw_predictions, paths)
@@ -155,7 +155,7 @@ class DataLoader:
             img_paths (List[Path]): List of image paths. If this is not None, root_path is ignored.
             nproc (int, optional): Number of processes for image loading. Defaults to 8.
             maximum_look_ahead (int, optional): Maximum number of images to preload. Defaults to 128.
-            backend (str, optional): Backend to use. Defaults to 'DeepDanbooru'. Also available: ConvNext
+            backend (str, optional): Backend to use. Defaults to 'DeepDanbooru'. Also available: WD14
         """
         self.root = root_path
         self.nproc = nproc if nproc > 0 else None
@@ -205,7 +205,7 @@ class Predictor:
             root_path (pathlike): Path to the root directory of images. If img_paths is not specified, this argument is required.
             model_path (pathlike): Path to the keras model.
             nproc (int, optional): Number of processes for image loading. Defaults to all available cores.
-            backend (str, optional): Backend to use. Defaults to 'DeepDanbooru'. Available backends are 'DeepDanbooru' and 'ConvNext'.
+            backend (str, optional): Backend to use. Defaults to 'DeepDanbooru'. Available backends are 'DeepDanbooru' and 'WD14'.
         """
         self.root_path = root_path
         self.model_path = Path(model_path)
