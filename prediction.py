@@ -125,8 +125,8 @@ def load_and_process_image(image: Path | Image.Image | np.ndarray, target_width:
         np_image = cv2.copyMakeBorder(np_image, dy, Y - ny - dy, dx, X - nx - dx, cv2.BORDER_CONSTANT, value=(255, 255, 255))
     if np_image.shape[2] == 4:
         RGB, alpha = np_image[:, :, :3], np_image[:, :, 3:]
-        alpha = alpha / 255  # type: ignore
-        RGB[:] = (1 - alpha) + alpha * RGB
+        fpalpha = alpha / 255  # type: ignore
+        RGB[:] = (255 - alpha) + fpalpha * RGB
         np_image = RGB
     if backend == 'DeepDanbooru':
         return np_image.astype(np.float32) / 255
@@ -278,7 +278,7 @@ class Predictor:
 
             def on_predict_batch_end(self, batch, logs=None):
                 remaining = self.total - self.N
-                diff = min(remaining, self.batch_size*max_chunk)
+                diff = min(remaining, self.batch_size * max_chunk)
                 self.tqdm_progress.update(diff)
                 self.N += diff
 
