@@ -122,7 +122,7 @@ class TagConfig:
                 self.mask[idx] = False
 
     def generate_mask_ConvNext(self):
-        categories = {'General': 0, 'System': 9}
+        categories = {'General': 0, 'System': 9, 'Character': 4}
         mask = np.zeros((len(self.tags),), dtype=bool)
         for name in self.include_categories:
             mask[self.wd_convnext_raw_tags[:, 2].astype(np.int32) == categories[name]] = True
